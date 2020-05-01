@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.pylab as plb
 from scipy import stats
 import matplotlib.patches as mpatches
+from figure_functions import *	
 
 #reference files
 os.chdir('/Users/stephaniewankowicz/Dropbox/Fraser_Rotation/qfit_output/')
@@ -38,66 +39,42 @@ for filename in all_files:
 order_all = pd.concat(li, axis=0, ignore_index=True)
 print(len(all_files))
 
+order_all[order_all.s2ang_x < 0] = 0
+order_all[order_all.s2ang_y < 0] = 0
+order_all[order_all.s2calc_x < 0] = 0
+
+
+#MERGE
+merged_order_all = merge_apo_holo_df(order_all)
+print(merged_order_all.head())
 
 #All Order Parameters by Residue Type
-order_all = order_all.merge(AH_key, on=['PDB'])
-order_all_holo = order_all[order_all['Apo_Holo']=='Holo']
-order_all_apo = order_all[order_all['Apo_Holo']=='Apo']
-
-test = order_all.merge(AH_pairs, left_on='PDB', right_on='Holo')
-merged_order_all = test.merge(order_all_apo, left_on=['Apo', 'chain', 'resi'], right_on=['PDB', 'chain', 'resi']) 
-merged_order_all = merged_order_all.drop_duplicates()
-
 merged_order_all['s2calc_x'] = merged_order_all['s2calc_x'].clip(lower=0)
 merged_order_all['s2calc_y'] = merged_order_all['s2calc_y'].clip(lower=0) 
 
 #SUBSET
 merged_order_all_polar = merged_order_all[merged_order_all['resn_x'].isin(['R','N','D','C','Q','E', 'H', 'K', 'S', 'T', 'Y'])]
-
 merged_order_all_nonpolar = merged_order_all[merged_order_all['resn_x'].isin(['V','W','P','F','M','L','I','G','A'])]
 
+#All Order Parameter Distribution Plots
+make_dist_plot_AH(merged_order_all['s2calc_x'], merged_order_all['s2calc_y'], 's2calc', 'Number of Residues', 'Apo v. Holo s2calc (Entire Protein)', 'AH_s2calc_entireprotein')
+make_dist_plot_AH(merged_order_all['s2ortho_x'], merged_order_all['s2ortho_y'], 's2ortho', 'Number of Residues', 'Apo v. Holo s2ortho (Entire Protein)', 'AH_s2ortho_entireprotein')
 
 #STATS
 print('Difference of s2calc on only Polar Side Chains between Holo/Apo [Entire Protein]')
-print(stats.ttest_rel(merged_order_all_polar['s2calc_x'], merged_order_all_polar['s2calc_y']))
-
-print('Holo Mean:')
-print(merged_order_all_polar['s2calc_x'].mean())
-
-print('Apo Mean:')
-print(merged_order_all_polar['s2calc_y'].mean())
-
-print('Holo Median:')
-print(merged_order_all_polar['s2calc_x'].median())
-
-print('Apo Mean:')
-print(merged_order_all_polar['s2calc_y'].median())
-
+paired_ttest(merged_order_all_polar['s2calc_x'], merged_order_all_polar['s2calc_x'])
 
 print('Difference of s2calc on only nonpolar Side Chains between Holo/Apo [Entire Protein]')
-print(stats.ttest_rel(merged_order_all_nonpolar['s2calc_x'], merged_order_all_nonpolar['s2calc_y']))
-
-print('Holo Mean:')
-print(merged_order_all_nonpolar['s2calc_x'].mean())
-
-print('Apo Mean:')
-print(merged_order_all_nonpolar['s2calc_y'].mean())
-
-print('Holo Median:')
-print(merged_order_all_nonpolar['s2calc_x'].median())
-
-print('Apo Mean:')
-print(merged_order_all_nonpolar['s2calc_y'].median())
+paired_ttest(merged_order_all_nonpolar['s2calc_x'], merged_order_all_nonpolar['s2calc_x'])
 
 
-#FIGURE
+#FIGURE 
 fig = plt.figure()
 f, axes = plt.subplots(1, 4, sharey=True, sharex=True)
 
 p1 = sns.boxenplot(merged_order_all_polar['s2calc_x'], orient='v', 
-ax=axes[0]).set(xlabel='Polar Bound', ylabel='Scalc Order Parameter')
+ax=axes[0]).set(xlabel='Polar Bound', ylabel='S2calc Order Parameter')
 p2 = sns.boxenplot(merged_order_all_polar['s2calc_y'], orient='v', ax=axes[1]).set(xlabel='Polar Unbound', ylabel='')
 p3 = sns.boxenplot(merged_order_all_nonpolar['s2calc_x'], orient='v', ax=axes[2]).set(xlabel='NonPolar Bound', ylabel='')
 p4 = sns.boxenplot(merged_order_all_nonpolar['s2calc_y'], orient='v', ax=axes[3]).set(xlabel='NonPolar Unbound', ylabel='')
-plt.show()
-figure.savefig('FullProtein_OP_byResidueType.png')
+fig.savefig('FullProtein_OP_byResidueType.png')
